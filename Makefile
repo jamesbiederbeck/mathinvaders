@@ -20,6 +20,13 @@ TARGET_SDK = 33
 
 KEYSTORE = debug.keystore
 
+# versionName is the label in AndroidManifest.xml. versionCode is a counter:
+# the highest N among v<name>#N release tags, plus one (1 when there are none),
+# so a local build installs as an update over the latest release. CI passes
+# VERSION_CODE explicitly.
+VERSION_NAME := $(shell grep -oP 'android:versionName="\K[^"]+' AndroidManifest.xml)
+VERSION_CODE ?= $(shell echo $$(( $$(git tag -l 'v*#*' 2>/dev/null | sed 's/.*\#//' | grep -E '^[0-9]+$$' | sort -n | tail -1 | grep . || echo 0) + 1 )))
+
 # Hardcoded device addresses go stale (the tablet is on DHCP), so pick the
 # first device adb already has. Override with `make run DEVICE=<ip>:<port>`
 # or by exporting ANDROID_DEVICE.
@@ -44,6 +51,8 @@ $(UNSIGNED): $(DEX) $(RESZIP) AndroidManifest.xml
 		--manifest AndroidManifest.xml \
 		--min-sdk-version $(MIN_SDK) \
 		--target-sdk-version $(TARGET_SDK) \
+		--version-code $(VERSION_CODE) \
+		--version-name $(VERSION_NAME) \
 		$(RESZIP) \
 		-o $(UNSIGNED)
 	zip -j -u $(UNSIGNED) $(DEX)
